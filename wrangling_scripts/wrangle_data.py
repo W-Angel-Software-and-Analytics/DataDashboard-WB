@@ -1,14 +1,31 @@
 import pandas as pd
 import requests
 import json
+from collections import defaultdict
 import plotly.graph_objs as go
 
 
+###---My comments are in this format; Course comments in #, anythin in ###--- will be deleted when project is complete---
+
 print("HELLO! Wrangle_data.py file accessed")
+
+###------THIS SECTION IS TO TEST CREATING THE JOINED LIST OF BOTH ID & NAME ----###
+            # test1=[]
+            # test2=[]
+            #
+            # for ea in req.json()[1]:
+            #     test1.append(ea['id'])
+            #     test2.append(ea['name'])
+            #
+            # test1
+            # test2
+
+
+
 # Use this file to read in your data and prepare the plotly visualizations. The path to the data files are in
 # `data/file_name.csv`
 
-# ----Connect to World Bank API----#
+# ----I chose to Connect to World Bank API instead of using a csv download because I wanted to the app to dynamically update----#
 # ###--------EXAMPLE API REQUESTS--------###
 # ### req = requests.get('https://api.worldbank.org/v2/country', params=queries)
 # ###req = requests.get('https://api.worldbank.org/v2/indicators', params=queries)
@@ -16,22 +33,39 @@ print("HELLO! Wrangle_data.py file accessed")
 # ###req = requests.get('https://api.worldbank.org/v2/source/1/indicators', params=queries)
 # ###--- Country, Indicator, Aggregate
 
+#CREATE API URL
 base_url ='https://api.worldbank.org/v2'
 country_url= '/countries/all'
 source_url= '/source/63'
-indicators_url= '/indicators/SP.POP.TOTL'
+indicators_url= '/indicators/'
+api_url= base_url+source_url+indicators_url
 
-api_url= base_url+country_url+source_url+indicators_url
-queries ={'format' :'json', 'per_page' : '75', 'date' : '2019:2019'}
+queries ={'format' :'json', 'per_page' : '2000', 'date' : '2020:2020', 'source': '63'}
+
+###--- Pull all Human Capital Indicators-#
 
 api_url
-
-req=requests.get(api_url)
-req = requests.get('https://api.worldbank.org/v2/source/63/indicatorsx', params=queries)
-req
-req.json()
+response=requests.get(api_url, params=queries)
 
 
+###--- Isolate the Indicators, Store in List to Make the URL"---###
+
+indicators_id_hc=[]
+indicators_id_hc = [ea['id'] for ea in response.json()[1]]
+indicators_url ='/indicators/'+';'.join(indicators_id_hc)
+indicators_url
+
+api_url= base_url+country_url+indicators_url
+api_url
+
+###--- Pull Country Level Data by Human Capital Indicators---###
+response=requests.get(api_url, params=queries)
+response.json()[1][0]
+
+
+###--- NEXT STEPS
+# 1.) Extract Data from JSON Dictionary.
+# 2.) Store into a dataframe.
 
 
 
