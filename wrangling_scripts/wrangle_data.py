@@ -33,43 +33,84 @@ print("HELLO! Wrangle_data.py file accessed")
 # ###req = requests.get('https://api.worldbank.org/v2/source/1/indicators', params=queries)
 # ###--- Country, Indicator, Aggregate
 
-#CREATE API URL
+# ###CREATE API URL
+
 base_url ='https://api.worldbank.org/v2'
 country_url= '/countries/all'
 source_url= '/source/63'
 indicators_url= '/indicators/'
+
+###--- 1) Pull the Human Capital Source (63) Summay, which containes the idicator Id
 api_url= base_url+source_url+indicators_url
-
-queries ={'format' :'json', 'per_page' : '2000', 'date' : '2020:2020', 'source': '63'}
-
-###--- Pull all Human Capital Indicators-#
-
-api_url
+# queries ={'format' :'json', 'per_page' : '6000', 'date' : '2020:2020', 'source': '63'}
+queries ={'format' :'json', 'per_page' : '18000', 'mrv' : '3', 'source': '63'}
 response=requests.get(api_url, params=queries)
+len(response.json()[1]) #check
+response.json()[0]
 
-
-###--- Isolate the Indicators, Store in List to Make the URL"---###
-
+###--- 2) Isolate the Indicators, Store in List to Make the indicators portion of the HC URL"---###
 indicators_id_hc=[]
 indicators_id_hc = [ea['id'] for ea in response.json()[1]]
+len(indicators_id_hc) #check
 indicators_url ='/indicators/'+';'.join(indicators_id_hc)
-indicators_url
+indicators_url #check
 
+###--- 3) Create new API url to pull all HC indicators by Country!
 api_url= base_url+country_url+indicators_url
 api_url
 
-###--- Pull Country Level Data by Human Capital Indicators---###
+###--- 4) Pull all Human Capital Indicators by Country---###
 response=requests.get(api_url, params=queries)
-response.json()[1][0]
+response.json()[0]
 
 
 ###--- NEXT STEPS
 # 1.) Extract Data from JSON Dictionary.
+response.json()[1][0]['country']['id']
+
+indicator_id=[]
+indicator_name=[]
+country_id=[]
+country_name=[]
+
+for ea in response.json()[1]:
+     indicator_id.append(ea['indicator']['id'])
+     indicator_name.append(ea['indicator']['value'])
+     country_id.append(ea['country']['id'])
+     country_name.append(ea['country']['value'])
+
+#check
+columns=['indicator_id', 'indicator_name', 'country_id', 'country_name']
+
+
+list_labels=[]
+for ea in [indicator_id, indicator_name, country_id, country_name]:
+    print(len(ea))
+    list_labels.append(pd.Series(ea))
+list_labels
+list_labels=pd.DataFrame(list_labels).T
+list_labels.columns=columns
+list_labels
+
+# pd.Series(list_labels)
+
+
+# labels= pd.DataFrame([indicator_id, indicator_name, country_id, country_name]).T
+
+
+
+
+data
+
 # 2.) Store into a dataframe.
+data =pd.DataFrame(response.json()[1])
+df= list_labels.join(data)
+df.shape
+df.drop(columns=['indicator','country'],inplace=True)
+df.shape
+df.head()
 
-
-
-
+pd.DataFrame()
 
 # def return_figures():
 #     """Creates four plotly visualizations
