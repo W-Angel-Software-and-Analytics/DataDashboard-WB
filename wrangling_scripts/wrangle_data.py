@@ -40,34 +40,36 @@ country_url= '/countries/all'
 source_url= '/source/63'
 indicators_url= '/indicators/'
 
-###--- 1) Pull the Human Capital Source (63) Summay, which containes the idicator Id
+# ###--- 1) Pull the Human Capital Source (63) Summary, which contains the Indicator Id
 api_url= base_url+source_url+indicators_url
 # queries ={'format' :'json', 'per_page' : '6000', 'date' : '2020:2020', 'source': '63'}
 queries ={'format' :'json', 'per_page' : '18000', 'mrv' : '3', 'source': '63'}
 response=requests.get(api_url, params=queries)
 len(response.json()[1]) #check
-response.json()[0]
+response.json()[1]
 
-###--- 2) Isolate the Indicators, Store in List to Make the indicators portion of the HC URL"---###
+# ###--- 2) Isolate the Indicators, Store in List to Make the indicators portion of the HC URL"---###
 indicators_id_hc=[]
 indicators_id_hc = [ea['id'] for ea in response.json()[1]]
 len(indicators_id_hc) #check
 indicators_url ='/indicators/'+';'.join(indicators_id_hc)
 indicators_url #check
 
-###--- 3) Create new API url to pull all HC indicators by Country!
+# ###--- 3) Create new API url to pull all HC indicators by Country!
 api_url= base_url+country_url+indicators_url
 api_url
 
-###--- 4) Pull all Human Capital Indicators by Country---###
+# ###--- 4) Pull all Human Capital Indicators by Country---###
 response=requests.get(api_url, params=queries)
 response.json()[0]
 
 
-###--- NEXT STEPS
+# ###--- NEXT STEPS CONVERT INTO DATAFRAME--- ###
 # 1.) Extract Data from JSON Dictionary.
 response.json()[1][0]['country']['id']
 
+
+# 2.) Indicator & Country Key:Value pairs are nested in Dictionary form need to Extract them first and store in LIST
 indicator_id=[]
 indicator_name=[]
 country_id=[]
@@ -79,38 +81,93 @@ for ea in response.json()[1]:
      country_id.append(ea['country']['id'])
      country_name.append(ea['country']['value'])
 
-#check
+# check
 columns=['indicator_id', 'indicator_name', 'country_id', 'country_name']
 
+# 3.) Convert list labesls to Series
 
-list_labels=[]
+series_labels=[]
 for ea in [indicator_id, indicator_name, country_id, country_name]:
     print(len(ea))
-    list_labels.append(pd.Series(ea))
-list_labels
-list_labels=pd.DataFrame(list_labels).T
-list_labels.columns=columns
-list_labels
+    series_labels.append(pd.Series(ea))
+# check
+series_labels
 
-# pd.Series(list_labels)
+#*****ISSUE!! NEED TO CHECK COUUNTRIES WITH DIFF # OF COLUMNS, MAKE SUR ORDER REMAINS INTACT
 
+# 4.) Convert Series labesl  to Dataframes
+df_labels=pd.DataFrame(series_labels).T
+df_labels.columns=columns
+df_labels.head()
 
-# labels= pd.DataFrame([indicator_id, indicator_name, country_id, country_name]).T
+# ### -- DELETE?? --- ###
+        # pd.Series(list_labels)
+        # labels= pd.DataFrame([indicator_id, indicator_name, country_id, country_name]).T
+###-----------------###
 
+# 5.) Store and convert JSON data values into a dataframe.
+df_data =pd.DataFrame(response.json()[1])
 
-
-
-data
-
-# 2.) Store into a dataframe.
-data =pd.DataFrame(response.json()[1])
-df= list_labels.join(data)
+# 6.) Join df labels to df data
+df= df_labels.join(df_data)
 df.shape
+
+# drop old columns orginal indicator & country from df_data
 df.drop(columns=['indicator','country'],inplace=True)
 df.shape
 df.head()
 
-pd.DataFrame()
+
+# ###------- NEXT Inspect data and start CLEANING ------- ###
+df.shape
+
+cols_to_check=df.iloc[:1,-4:].columns.to_list()
+
+# RESULT shows that these columns have onlu Blank values and NAN --- NOTE isna and isnull are not capturing blank values! Needed ValueCounts!
+for ea in cols_to_check:
+    print(ea+":")
+    print(df[ea].value_counts(dropna=False))
+    print("\n")
+
+df.drop(columns=cols_to_check, inplace=True)
+df.shape #check
+df.columns.to_list() #check
+
+# ###---- Column checks BEFORE Refactoring-----###
+                    #  Filter where isna.any is True-- NOTE series values is a Boolean, no need to set == True; already implied, but you can with no quotes
+                    # df.isna().any()[df.isna().any()==True]
+                    #
+                    # # NOTE there are NAN and BLANK values MUST set dropna to FALSE...
+                    # # isna and isnull do not capture blank values
+                    # df.scale.value_counts(dropna=False)
+                    # df.scale.isnull().value_counts() #check shows that all are either NaN or Blank
+                    #
+                    # df.scale[df.scale.isna()==False] # additional checks
+                    # df.scale[:20] #additional checks CHECKING ROW INDEX 9-13, to verify some are NA some are Blank
+                    #
+                    # #   --- Rinse & repeat for  unit & obs ---
+                    # df.unit.value_counts(dropna=False) # check shows that all are blank
+                    # df.obs_status.value_counts(dropna=False) # check shows that all are blank
+                    #
+
+#--- NEXT What to do about MISSING VALUES  in the VALUES COLUMN?! --- ###
+# I think I should fill them with NAN,  or drop them.
+    # Zero Values may distort graphs
+    # Graphs should skip NAN ...or blanks???
+    # What would be the consequences of droppiing MISSING values?
+        #Which missing values make sense to drop?
+        #For timeseries data, for a given country, it may makes sense to
+            # take an average for in between years,
+            # or uses the last value for later year, or prior years
+            # HOWEVER, GIVEN  COVID-19 if there are sharp changes It might not make sense
+                #### Need to understand which years in times series are most MISSING
+                #### AND the trend, or trend dispruption due to covid.
+        #FOR cross Country data, it will make sense to drop them sense you do not have the contextt to impute missing data, based on regional, or like country averages...abs()
+
+
+
+
+
 
 # def return_figures():
 #     """Creates four plotly visualizations
