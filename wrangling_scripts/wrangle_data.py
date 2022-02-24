@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 import json
+import matplotlib.pyplot as plt
 from collections import defaultdict
 import plotly.graph_objs as go
 
@@ -93,7 +94,7 @@ for ea in [indicator_id, indicator_name, country_id, country_name]:
 # check
 series_labels
 
-#*****ISSUE!! NEED TO CHECK COUUNTRIES WITH DIFF # OF COLUMNS, MAKE SUR ORDER REMAINS INTACT
+#*****ISSUE!! NEED TO CHECK COUUNTRIES WITH DIFF # OF ROWS, MAKE SUR ORDER REMAINS INTACT
 
 # 4.) Convert Series labesl  to Dataframes
 df_labels=pd.DataFrame(series_labels).T
@@ -133,7 +134,12 @@ df.drop(columns=cols_to_check, inplace=True)
 df.shape #check
 df.columns.to_list() #check
 
+print('Dataframe created with NaN/empty cols dropped')
+
+df
+
 # ###---- Column checks BEFORE Refactoring-----###
+
                     #  Filter where isna.any is True-- NOTE series values is a Boolean, no need to set == True; already implied, but you can with no quotes
                     # df.isna().any()[df.isna().any()==True]
                     #
@@ -150,7 +156,7 @@ df.columns.to_list() #check
                     # df.obs_status.value_counts(dropna=False) # check shows that all are blank
                     #
 
-#--- NEXT What to do about MISSING VALUES  in the VALUES COLUMN?! --- ###
+#--- NEXT What to do about MISSING VALUES  in the VALUES COLUMN?! --- ### <-- thinking at the most detailed level needed to meet end goal.
 # I think I should fill them with NAN,  or drop them.
     # Zero Values may distort graphs
     # Graphs should skip NAN ...or blanks???
@@ -164,9 +170,74 @@ df.columns.to_list() #check
                 #### AND the trend, or trend dispruption due to covid.
         #FOR cross Country data, it will make sense to drop them sense you do not have the contextt to impute missing data, based on regional, or like country averages...abs()
 
+df
 
 
+# ###---- STRATEGY for Evaluating Missing Values: Is it Entire Years? Entire Countries? Entire Indicators? ---- ### <<-- thinking at most broad/ high-level
 
+###--- NEED A CHECK- !
+
+df.groupby('date')['value'].count()
+
+len(df.country_id.unique())
+df.groupby(['country_id','indicator_id','date'])['value'].mean()
+
+# ###Evaluated whether to drop entire year = NO!
+
+df.groupby(['country_id','date'])['value'].sum()
+df.groupby('date')['value'].count()
+# ###Evaluated whether to drop entire countries w all years if 0 values = YES
+
+#REFACTORED - Count MissingNess by Country by Year
+for ea in range(2017,2021):
+    print(ea , (df[df.date==str(ea)].groupby('country_id')['value'].count() ==0).sum())
+
+# Identify whether the same countries reoccurr
+
+ctry_totals= df.groupby('country_id')['value'].sum()
+ctry_drop_ids= ctry_totals[ctry_totals==0].index.to_list()
+type(ctry_drop_ids)
+ctry_drop_ids
+
+# -- DROPPED Countrys with NaN/ZERO Values for All three years
+###****** NOTE SYNTAX!! ~ negates the isin() method and ONLY filters those NOT IN THE LIST!!!*****#############
+df=df[~df.country_id.isin(ctry_drop_ids)]
+
+# check
+df[df.country_id.isin(ctry_drop_ids)].any().sum()
+
+df.shape
+
+
+# ### Evaluate remaining MissingNess within country by years
+# Evaluate whether MissingNess is across the same indicators
+
+len(df.country_id.unique())
+( ==0).sum(0)
+
+#Evaluate Entire  Indicators = NO!
+(df.groupby('indicator_id')['value'].sum()==0).sum()
+
+#Evaluate entire Indicators by year = NO!
+(df.groupby(['indicator_id','date'])['value'].sum()==0).sum()
+
+# Number Misising remaining
+df.value.isna().sum()
+
+
+for ea in range(2017,2021):
+    print(ea , (df[df.date==str(ea)].groupby(['country_id','date','indicator_id'])['value'].count() ==0).sum())
+
+ctry_singleYr_miss=df.groupby(['country_id','date'])['value'].sum()==0
+
+ctry_singleYr_miss=ctry_singleYr_miss[ctry_singleYr_miss==True]
+
+#visualize remaining MissingNess
+ctry_singleYr_miss.plot(x='date',y='value')
+
+
+# Results of evaluation show that remaining MissingNess is at the most detailed level.... cty,ind,yr
+# Next steps... back to end notes from last wotking session
 
 
 # def return_figures():
